@@ -21,9 +21,11 @@ with st.container():
 st.subheader("🏠 Farm Setup")
 farm_names = []
 f_cols = st.columns(4)
-for i in range(num_farms):
+for i in range(int(num_farms)):
     with f_cols[i % 4]:
-        name = st.text_input(f"ฟาร์มที่ {idx_name := i+1}", f"Farm {idx_name}", key=f"fn_{i}")
+        # แก้ไขจุดที่เกิด Error: แยกการคำนวณลำดับออกมาข้างนอก
+        farm_display_number = i + 1
+        name = st.text_input(f"ฟาร์มที่ {farm_display_number}", f"Farm {farm_display_number}", key=f"fn_{i}")
         farm_names.append(name)
 
 uploaded_files = st.file_uploader("📸 อัปโหลดรูปภาพหลักฐาน", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
@@ -48,13 +50,13 @@ for farm in farm_names:
                     "L": lg
                 })
 
-# --- ส่วนที่ 4: สรุปผลรายงาน (เพิ่ม Header รายละเอียด) ---
+# --- ส่วนที่ 4: สรุปผลรายงาน ---
 st.markdown("---")
 if st.button("📊 Generate Pro Summary"):
     if not all_rows:
         st.warning("กรุณากรอกข้อมูลก่อนกดสรุปผล")
     else:
-        # --- แสดงหัวรายงาน (Report Header) ---
+        # แสดงหัวรายงาน
         st.markdown(f"""
         ### 📑 Summary Analysis Report
         **วันที่ตรวจ:** {report_date.strftime('%d/%m/%Y')}  
@@ -67,13 +69,13 @@ if st.button("📊 Generate Pro Summary"):
         # สร้างตาราง Summary แบบแนวนอน
         summary_df = raw_df.pivot(index='Farm', columns='Sample', values=['S-M', 'L'])
         
-        # จัดเรียงลำดับคอลัมน์ใหม่ให้เป็น S-M1, L1, S-M2, L2...
+        # จัดลำดับคอลัมน์ S-M1, L1, S-M2, L2...
         new_cols = []
         for i in range(1, 7):
-            new_cols.extend([( 'S-M', i), ( 'L', i)])
+            new_cols.extend([('S-M', i), ('L', i)])
         summary_df = summary_df.reindex(columns=new_cols)
         
-        # ปรับชื่อ Column
+        # ปรับชื่อ Column (Flat columns)
         summary_df.columns = [f"{val}{col}" for val, col in summary_df.columns]
         summary_df = summary_df.reset_index()
 
@@ -82,9 +84,9 @@ if st.button("📊 Generate Pro Summary"):
         summary_df['Total_L'] = summary_df[l_cols].sum(axis=1)
         summary_df['Result'] = summary_df['Total_L'].apply(lambda x: "🔴 Positive" if x > 0 else "🟢 Negative")
 
-        # ตกแต่งและแสดงผลตาราง
+        # ตกแต่งตาราง
         st.dataframe(
-            summary_df.style.applymap(
+            summary_df.style.map(
                 lambda x: 'background-color: #ffcccc; color: red; font-weight: bold' if x == "🔴 Positive" else '',
                 subset=['Result']
             ),
@@ -92,10 +94,8 @@ if st.button("📊 Generate Pro Summary"):
             hide_index=True
         )
 
-        # Dashboard สรุปสั้นๆ
         pos_count = (summary_df['Total_L'] > 0).sum()
         st.success(f"✅ ตรวจเสร็จสิ้น: พบเชื้อ L Oocyst ใน {pos_count} ฟาร์ม จากทั้งหมด {num_farms} ฟาร์ม")
 
-        # ปุ่มดาวน์โหลด
         csv = summary_df.to_csv(index=False).encode('utf-8-sig')
-        st.download_button("📥 Download Summary CSV", csv, f"Eimeria_Report_{area_input}_{report_date}.csv", "text/csv")
+        st.download_button("📥 Download Summary CSV", csv, f"Eimeria_Report_{area_input}.csv", "text/csv")
